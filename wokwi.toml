@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = 'build/Veronia.bin'
+elf = 'build/Veronia.elf'
