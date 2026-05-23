@@ -1,7 +1,7 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
-  "idf.espIdfPath": "/Users/casey/esp/v5.2.1/esp-idf",
-  "idf.pythonInstallPath": "/opt/miniconda3/bin/python3",
+  "idf.espIdfPath": "/Users/casey/.espressif/v6.0.1/esp-idf",
+  "idf.pythonInstallPath": "/opt/miniconda3/bin/python",
   "idf.openOcdConfigs": [
     "interface/ftdi/esp32_devkitj_v1.cfg",
     "target/esp32s3.cfg"
@@ -18,5 +18,9 @@
     "--background-index",
     "--query-driver=/Users/casey/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20230928/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc",
     "--compile-commands-dir=/Users/casey/Veronia/build"
-  ]
+  ],
+  "files.associations": {
+    "motor.h": "c",
+    "simplefoc.h": "c"
+  }
 }

@@ -20,7 +20,7 @@ dependencies:
       type: service
     version: 1.1.1
   espressif/esp_simplefoc:
-    component_hash: c8d01156a53b571fbd68d022029572c0b001b9bdc5e9db972cc8bba346e6064a
+    component_hash: e2af05168bba8963fe2d1cc2216123bd04846857f9b14a40dcfc42fb83895bbd
     dependencies:
     - name: espressif/arduino-foc
       registry_url: https://components.espressif.com
@@ -47,7 +47,7 @@ dependencies:
     - esp32c3
     - esp32c6
     - esp32h2
-    version: 1.2.3
+    version: 1.3.0
   espressif/i2c_bus:
     component_hash: 804ec068d163570fd367b279a310ca383484630d2310c586b50def0bcf21de13
     dependencies:
@@ -75,10 +75,10 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.2.1
+    version: 6.0.1
 direct_dependencies:
 - espressif/esp_simplefoc
 - idf
-manifest_hash: d4124379bffaffa57daa3bd33daf429a579d3289d87e6da79f533ea6d2e7ad4f
+manifest_hash: c46a244079a32c3be54329476165775db57aff72f01730b648446121905e6c0e
 target: esp32s3
-version: 2.0.0
+version: 3.0.0
