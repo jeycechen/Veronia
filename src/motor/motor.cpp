@@ -1,8 +1,8 @@
 /*
  * @Author: 陈开龙 cklnuaa@163.com
  * @Date: 2026-04-21 10:00:50
- * @LastEditors: 陈开龙 cklnuaa@163.com
- * @LastEditTime: 2026-05-16 21:00:06
+ * @LastEditors: ChenCalm cklnuaa@163.com
+ * @LastEditTime: 2026-05-24 20:44:20
  * @FilePath: /Veronia/src/motor/motor.cpp
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -12,11 +12,20 @@
 #include "esp_log.h"
 #include "stdio.h"
 static const int spiClk = 1000000; // 400KHz
+class AngleEncoder {
+    public:
+    AngleEncoder() {
+
+    }
+};
 
 class MotorCtrl {
+    private:
+    AngleEncoder angle;
     public:
-    void init() {};
-    MotorCtrl() {};
+    MotorCtrl() {
+
+    };
 };
 
 void veronia_motor_task(void *pvParameters) {

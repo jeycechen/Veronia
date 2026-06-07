@@ -19,6 +19,8 @@ extern "C" {
 // #include <SimpleFOC.h>
 
 void veronia_motor_task(void *pvParameters);
+void veronia_encoder_task(void *pvParameters);
+void veronia_smart_knob_task(void *pvParameters);
 
 #ifdef __cplusplus
 }
