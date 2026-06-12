@@ -3,24 +3,25 @@
   "idf.espIdfPath": "/Users/casey/.espressif/v6.0.1/esp-idf",
   "idf.pythonInstallPath": "/opt/miniconda3/bin/python",
   "idf.openOcdConfigs": [
-    "board/esp32-wrover-kit-3.3v.cfg"
+    "board/esp32s3-builtin.cfg"
   ],
   "idf.port": "/dev/tty.debug-console",
   "idf.toolsPath": "/Users/casey/.espressif",
   "idf.customExtraVars": {
     "OPENOCD_SCRIPTS": "/Users/casey/.espressif/tools/openocd-esp32/v0.12.0-esp32-20230921/openocd-esp32/share/openocd/scripts",
     "ESP_ROM_ELF_DIR": "/Users/casey/.espressif/tools/esp-rom-elfs/20230320/",
-    "IDF_TARGET": "esp32"
+    "IDF_TARGET": "esp32s3"
   },
-  "clangd.path": "C:\\Users\\Admin\\.espressif\\tools\\esp-clang\\esp-19.1.2_20250312\\esp-clang\\bin\\clangd.exe",
+  "clangd.path": "/Users/casey/.espressif/tools/esp-clang/esp-20.1.1_20250829/esp-clang/bin/clangd",
   "clangd.arguments": [
     "--background-index",
-    "--query-driver=**",
-    "--compile-commands-dir=d:\\ckl_learning\\Veronia\\build"
+    "--query-driver=/Users/casey/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc",
+    "--compile-commands-dir=/Users/casey/Veronia/build"
   ],
   "files.associations": {
     "motor.h": "c",
-    "simplefoc.h": "c"
+    "simplefoc.h": "c",
+    "__node_handle": "cpp"
   },
   "idf.currentSetup": "C:\\Users\\Admin\\esp\\v5.5\\esp-idf",
   "idf.flashType": "UART",

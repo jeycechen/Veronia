@@ -1,8 +1,8 @@
 /*
  * @Author: ChenCalm cklnuaa@163.com
  * @Date: 2026-05-23 18:20:32
- * @LastEditors: ChenCalm cklnuaa@163.com
- * @LastEditTime: 2026-05-24 13:14:08
+ * @LastEditors: 陈开龙 cklnuaa@163.com
+ * @LastEditTime: 2026-06-12 23:31:03
  * @FilePath: \Veronia\src\motor\motor.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -10,7 +10,34 @@
 #define MOTOR_H
 
 #include "stdint.h"
-#define PI  3.14159
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
+#include "stdio.h"
+#include "esp_simplefoc.h"
+#include "esp_timer.h"
+#include "angleencoder.h"
+#include "pins.h"
+#include "math.h"
+
+
+static constexpr uint8_t MOTOR_POLE_PAIRS = 7;
+static constexpr int AS5047P_SPI_MODE = 1;
+static constexpr int AS5047P_SPI_CLOCK_HZ = 100 * 1000;
+static constexpr int MOTOR_POWER_SUPPLY = 5; // 5V供电
+
+// 怠速
+static constexpr float IDLE_VELOCITY_EWMA_ALPHA = 0.001;
+static constexpr float IDLE_VELOCITY_RAT_PER_SEC = 0.05;
+static constexpr uint32_t IDLE_CORRECTION_MILLIS_THRESHOLD = 500U; //只有怠速超过500ms，才认为当前是静止不动的
+static constexpr float IDLE_CORRECTION_MAX_ANGLE_RAD = 5 * PI / 180; // 怠速校正最大角度，5度
+static constexpr float IDLE_CORRECTION_RATE_ALPHA = 0.0005; // 怠速修正率
+
+
+// 死区
+static constexpr float DEAD_ZONE_DETENT_PERCENT = 0.2; // 死区制动百分率
+static constexpr float DEAD_ZONE_RAD = 1 * PI / 180;  // 死区调整角度
+
 
 typedef struct MotorConfig {
     // 可以运动的个数
@@ -29,102 +56,6 @@ typedef struct MotorConfig {
     char descriptor[50];          
 }MotorConfig;
 
-
-static MotorConfig motor_configs[] = {
-    [MOTOR_UNBOUND_FINE_DETENTS] = {
-        0,
-        0,
-        1 * PI / 180,
-        2,
-        1,
-        1.1,
-        "Fine values\nWith detents", //任意运动的控制  有阻尼 类似于机械旋钮
-    },
-    [MOTOR_UNBOUND_NO_DETENTS] = {
-        0,
-        0,
-        1 * PI / 180,
-        0,
-        0.1,
-        1.1,
-        "Unbounded\nNo detents", //无限制  不制动
-    },
-    [MOTOR_SUPER_DIAL] = {
-        0,
-        0,
-        5 * PI / 180,
-        2,
-        1,
-        1.1,
-        "Super Dial", //无限制  不制动
-    },
-    [MOTOR_UNBOUND_COARSE_DETENTS] = {
-        .num_positions = 0,
-        .position = 0,
-        .position_width_radians = 8.225806452 * _PI / 180,
-        .detent_strength_unit = 2.3,
-        .endstop_strength_unit = 1,
-        .snap_point = 1.1,
-        "Fine values\nWith detents\nUnbound"
-    },
-    [MOTOR_BOUND_0_12_NO_DETENTS]= {
-        13,
-        0,
-        10 * PI / 180,
-        0,
-        1,
-        1.1,
-        "Bounded 0-13\nNo detents",
-    },
-    [MOTOR_BOUND_LCD_BK_BRIGHTNESS]= {
-        101,
-        10,
-        2 * PI / 180,
-        2,
-        1,
-        1.1,
-        "Bounded 0-101\nNo detents",
-    },
-    [MOTOR_BOUND_LCD_BK_TIMEOUT]= {
-        31,
-        0,
-        5 * PI / 180,
-        2,
-        1,
-        1.1,
-        "Bounded 0-3601\nNo detents",
-    },
-    [MOTOR_COARSE_DETENTS] = {
-        32,
-        0,
-        8.225806452 * PI / 180,
-        2,
-        1,
-        1.1,
-        "Coarse values\nStrong detents", //粗糙的棘轮 强阻尼
-    },
-
-    [MOTOR_FINE_NO_DETENTS] = {
-        256,
-        127,
-        1 * PI / 180,
-        0,
-        1,
-        1.1,
-        "Fine values\nNo detents", //任意运动的控制  无阻尼
-    },
-    [MOTOR_ON_OFF_STRONG_DETENTS] = {
-        2, 
-        0,
-        60 * PI / 180, 
-        1,             
-        1,
-        0.55,                    // Note the snap point is slightly past the midpoint (0.5); compare to normal detents which use a snap point *past* the next value (i.e. > 1)
-        "On/off\nStrong detent", //模拟开关  强制动
-    },
-
-};
-
 typedef enum
 {
     MOTOR_UNBOUND_FINE_DETENTS,        // Fine values\nWith detents
@@ -138,7 +69,33 @@ typedef enum
     MOTOR_FINE_NO_DETENTS,     // Fine values\nNo detents
     MOTOR_ON_OFF_STRONG_DETENTS,             // "On/off\nStrong detent"
     MOTOR_MAX_MODES, //
+} MOTOR_WORK_MODE_ENUM;
 
-} MOTOR_RUNNING_MODE_ENUM;
+class MotorCtrl {
+    private:
+        MOTOR_WORK_MODE_ENUM workMode;
+        GenericSensor encoder;
+        BLDCMotor motor = BLDCMotor(MOTOR_POLE_PAIRS);;
+        BLDCDriver6PWM driver = BLDCDriver6PWM(TMC_UH, TMC_UL, TMC_VH, TMC_VL, TMC_WH, TMC_WL);
+        MotorConfig workConfig;
+        float current_detent_center = 0; // 虚拟的档位中心位置，在怠速情况下，需要拖拽到这个位置
+        float angle_to_current_detent_center = 0; // 电机当前角度到虚拟档位中心的角度差
+        float idle_velocity = 0;
+        unsigned long last_idle_start = 0;
+    public:
+        MotorCtrl(){};
+        ~MotorCtrl(){};
+        void init();
+        // 震动反馈
+        void shake_motor(int strength, int delay_time);
+        // 指向某个角度
+        void move_motor_to_angle(float angle, float velocity = 5);
+        // 更新foc的运转模式
+        void update_motor_runmode(int mode, int init_position);
+        // 发布当前foc的状态，供其他组件取用；
+        void publish_motor_status(bool is_outbound);
+        void motorUpdate(void *pvParameters);
+};
+
 
 #endif
