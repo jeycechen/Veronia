@@ -2,7 +2,7 @@
  * @Author: ChenCalm cklnuaa@163.com
  * @Date: 2026-06-04 23:14:03
  * @LastEditors: ChenCalm cklnuaa@163.com
- * @LastEditTime: 2026-06-07 11:27:39
+ * @LastEditTime: 2026-06-14 01:03:39
  * @FilePath: \Veronia\src\motor\open_loop_spin_test.cpp
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -20,7 +20,7 @@ static constexpr float DRIVER_VOLTAGE_LIMIT = 3.0f;
 static constexpr float MOTOR_VOLTAGE_LIMIT = 2.0f;
 static constexpr float OPEN_LOOP_TARGET_VELOCITY = 2.0f;
 
-extern "C" void veronia_motor_task(void *pvParameters)
+extern "C" void open_loop_motor_task(void *pvParameters)
 {
     (void)pvParameters;
 
