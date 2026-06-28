@@ -2,7 +2,7 @@
  * @Author: ChenCalm cklnuaa@163.com
  * @Date: 2026-05-23 18:20:32
  * @LastEditors: 陈开龙 cklnuaa@163.com
- * @LastEditTime: 2026-06-12 23:31:03
+ * @LastEditTime: 2026-06-29 01:15:30
  * @FilePath: \Veronia\src\motor\motor.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -74,10 +74,19 @@ typedef enum
 class MotorCtrl {
     private:
         MOTOR_WORK_MODE_ENUM workMode;
-        GenericSensor encoder;
+        GenericSensor sensor;
         BLDCMotor motor = BLDCMotor(MOTOR_POLE_PAIRS);;
         BLDCDriver6PWM driver = BLDCDriver6PWM(TMC_UH, TMC_UL, TMC_VH, TMC_VL, TMC_WH, TMC_WL);
-        MotorConfig workConfig;
+        
+        MotorConfig workConfig = {
+            .num_positions = 0,
+            .position = 0,
+            .position_width_radians = 8 * PI / 180;
+            .detent_strength_unit = 2,
+            .endstop_strength_unit = 1,
+            .snap_point = 1.1,
+            .descriptor = "Default Config",
+        };
         float current_detent_center = 0; // 虚拟的档位中心位置，在怠速情况下，需要拖拽到这个位置
         float angle_to_current_detent_center = 0; // 电机当前角度到虚拟档位中心的角度差
         float idle_velocity = 0;
