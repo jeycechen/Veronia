@@ -2,11 +2,12 @@
  * @Author: 陈开龙 cklnuaa@163.com
  * @Date: 2026-04-21 10:00:50
  * @LastEditors: 陈开龙 cklnuaa@163.com
- * @LastEditTime: 2026-06-13 00:19:09
+ * @LastEditTime: 2026-07-05 13:21:44
  * @FilePath: /Veronia/src/motor/motor.cpp
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 #include "motor.h"
+#define MOTOR_DIRECTION_REV 1
 
 static const char *TAG = "motor_control";
 
@@ -58,24 +59,6 @@ static MotorConfig motor_configs[] = {
         1.1,
         "Bounded 0-13\nNo detents",
     },
-    [MOTOR_BOUND_LCD_BK_BRIGHTNESS]= {
-        101,
-        10,
-        2 * PI / 180,
-        2,
-        1,
-        1.1,
-        "Bounded 0-101\nNo detents",
-    },
-    [MOTOR_BOUND_LCD_BK_TIMEOUT]= {
-        31,
-        0,
-        5 * PI / 180,
-        2,
-        1,
-        1.1,
-        "Bounded 0-3601\nNo detents",
-    },
     [MOTOR_COARSE_DETENTS] = {
         32,
         0,
@@ -117,17 +100,26 @@ static void initMyAngleEncoderCallback(void) {
     }
     return;
 }
+int64_t last_time_us;
+int64_t now_time_us;
 
 static float readMyAngleEncoderCallback() {
+    now_time_us = esp_timer_get_time();
+    const float dt = (float)(now_time_us - last_time_us) * 1e-6f;
+    last_time_us = now_time_us;
+    if (!encoder.update(dt)) { // 更新失败，打印日志
+        ESP_LOGW(TAG, "AS5047P read failed, err=0x%04X", encoder.get_last_error_flags());
+    }
     float deg = encoder.get_mechanical_degrees(); // [0, 360)
     return (deg / 360.0) * 2 * PI; // 返回弧度
 }
 MotorCtrl motorCtrl;
 
 void MotorCtrl::init(){
-    encoder = GenericSensor(readMyAngleEncoderCallback, initMyAngleEncoderCallback);
-    encoder.init();
-    motor.linkSensor(&(this->encoder));
+    last_time_us = esp_timer_get_time(); // 初始化时间
+    sensor = GenericSensor(readMyAngleEncoderCallback, initMyAngleEncoderCallback);
+    sensor.init();
+    motor.linkSensor(&(this->sensor));
     driver.voltage_power_supply = MOTOR_POWER_SUPPLY;
     driver.init();
     motor.linkDriver(&driver);
@@ -142,17 +134,17 @@ void MotorCtrl::init(){
     motor.voltage_limit = 5;
     motor.LPF_velocity.Tf = 0.01;
     motor.velocity_limit = 10;
-
+    current_detent_center = sensor.getAngle(); // 初始化当前的档位中心为当前角度
     motor.init();
     motor.initFOC();
 }
 
 void MotorCtrl::motorUpdate(void *pvParameters) {
-    encoder.update();
+    sensor.update();
     motor.loopFOC();
     
     // 计算当前的速度，使用一阶平滑滤波；
-    idle_velocity = motor.shaft_velocity * IDLE_VELOCITY_EWMA_ALPHA + idle_velocity * ( 1 - IDLE_VELOCITY_EWMA_ALPHA);
+    idle_velocity = sensor.getVelocity() * IDLE_VELOCITY_EWMA_ALPHA + idle_velocity * ( 1 - IDLE_VELOCITY_EWMA_ALPHA);
     if (fabsf(idle_velocity) > IDLE_VELOCITY_RAT_PER_SEC) {
         // 说明这个时候不是怠速，可能已经发生移动了
         last_idle_start = 0;
@@ -165,23 +157,23 @@ void MotorCtrl::motorUpdate(void *pvParameters) {
 
     // 如果上一次进入循环也是怠速，并且已经持续超过了怠速的时间阈值，并且当前角度距离虚拟档位中心不远，那么就认为这个时候是静止不动的，可以进行怠速校正；
     if (last_idle_start > 0 && millis() - last_idle_start > IDLE_CORRECTION_MILLIS_THRESHOLD
-        && fabsf(motor.shaft_angle - current_detent_center < IDLE_CORRECTION_MAX_ANGLE_RAD))
+        && fabsf(sensor.getAngle() - current_detent_center < IDLE_CORRECTION_MAX_ANGLE_RAD))
     {
-        current_detent_center = motor.shaft_angle * IDLE_CORRECTION_RATE_ALPHA + current_detent_center * (1 - IDLE_CORRECTION_RATE_ALPHA);
+        current_detent_center = sensor.getAngle() * IDLE_CORRECTION_RATE_ALPHA + current_detent_center * (1 - IDLE_CORRECTION_RATE_ALPHA);
     }
 
     // 计算当前的位置到 修正后的档位中心的角度差值，需要根据电机安装位置调整       
-    angle_to_current_detent_center = motor.shaft_angle - current_detent_center; 
+    angle_to_current_detent_center = sensor.getAngle() - current_detent_center; 
 
     // 判断档位位置，是否执行跳档
     if (angle_to_current_detent_center > workConfig.position_width_radians * workConfig.snap_point
-        && (workConfig.num_positions <= 0 || workConfig.position > 0)) { // 
+        && (workConfig.num_positions <= 0 || workConfig.position < workConfig.num_positions - 1)) { // delta angle越过了设置的角度
         current_detent_center += workConfig.position_width_radians;
         angle_to_current_detent_center -= workConfig.position_width_radians;
 
         workConfig.position++;
-    } else if (angle_to_current_detent_center < -workConfig.position_width_radians * workConfig.snap_point 
-                && (workConfig.num_positions <=0 || workConfig.position < workConfig.num_positions - 1)) 
+    } else if (angle_to_current_detent_center < - workConfig.position_width_radians * workConfig.snap_point 
+                && (workConfig.num_positions <=0 || workConfig.position > 0)) 
     {
         // 进入这个分支，说明是往反方向旋转
         current_detent_center -= workConfig.position_width_radians;
@@ -198,14 +190,14 @@ void MotorCtrl::motorUpdate(void *pvParameters) {
     );
     // 出界
     bool is_out_bound = workConfig.num_positions > 0 && 
-                ((angle_to_current_detent_center > 0 && workConfig.position == 0) 
-              || (angle_to_current_detent_center < 0 && workConfig.position == workConfig.num_positions - 1));
+                ((angle_to_current_detent_center < 0 && workConfig.position == 0) 
+              || (angle_to_current_detent_center > 0 && workConfig.position == workConfig.num_positions - 1));
     
     motor.PID_velocity.limit = is_out_bound ? 10 : 3;
     motor.PID_velocity.P = is_out_bound ? workConfig.endstop_strength_unit * 4 : workConfig.detent_strength_unit * 4;
     
     // 处理float类型的绝对值
-    if (fabsf(motor.shaft_velocity) > 60)
+    if (fabsf(sensor.getVelocity()) > 60)
     {
         motor.move(0);
     } else {
@@ -242,18 +234,16 @@ void MotorCtrl::publish_motor_status(bool is_outbound){
 void MotorCtrl::update_motor_runmode(int mode, int init_position){
     workConfig = motor_configs[mode];
     workConfig.position = init_position;
-    current_detent_center = -motor.shaft_angle;
+    current_detent_center = sensor.getAngle();
 
     shake_motor(2, 2);
 }
 
 extern "C" void veronia_motor_task(void *pvParameters) {
     motorCtrl.init();
-
     while (1) {
         motorCtrl.motorUpdate(pvParameters);
         vTaskDelay(1);
         printf(">>> Motor control task running on core %d <<<\n", xPortGetCoreID());
-        vTaskDelay(pdMS_TO_TICKS(100)); // 每100ms更新一次
     }
 }
