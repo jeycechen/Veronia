@@ -2,7 +2,7 @@
  * @Author: ChenCalm cklnuaa@163.com
  * @Date: 2026-06-04 23:14:03
  * @LastEditors: ChenCalm cklnuaa@163.com
- * @LastEditTime: 2026-06-14 01:03:39
+ * @LastEditTime: 2026-07-19 19:42:35
  * @FilePath: \Veronia\src\motor\open_loop_spin_test.cpp
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -15,16 +15,17 @@
 static const char *TAG = "motor_openloop";
 
 static constexpr int MOTOR_POLE_PAIRS = 7;
-static constexpr float POWER_SUPPLY_VOLTAGE = 12.0f;
-static constexpr float DRIVER_VOLTAGE_LIMIT = 3.0f;
-static constexpr float MOTOR_VOLTAGE_LIMIT = 2.0f;
-static constexpr float OPEN_LOOP_TARGET_VELOCITY = 2.0f;
+static constexpr float POWER_SUPPLY_VOLTAGE = 5.20f;
+static constexpr float DRIVER_VOLTAGE_LIMIT = 5.20f;
+static constexpr float MOTOR_VOLTAGE_LIMIT = 0.7f;
+static constexpr float OPEN_LOOP_TARGET_VELOCITY = 5.0f;
 
 extern "C" void open_loop_motor_task(void *pvParameters)
 {
     (void)pvParameters;
 
     ESP_LOGI(TAG, "Starting 6PWM open-loop motor test");
+    ESP_LOGI(TAG, "supplyV=%f driverV=%f notorV=%f",POWER_SUPPLY_VOLTAGE, DRIVER_VOLTAGE_LIMIT, MOTOR_VOLTAGE_LIMIT);
     ESP_LOGI(TAG, "UH=%d UL=%d VH=%d VL=%d WH=%d WL=%d EN=%d",
              TMC_UH, TMC_UL, TMC_VH, TMC_VL, TMC_WH, TMC_WL, EN_MOTOR);
 
@@ -68,7 +69,6 @@ extern "C" void open_loop_motor_task(void *pvParameters)
             ESP_LOGI(TAG, "open-loop tick, core=%d", xPortGetCoreID());
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1));
         vTaskDelay(loop_delay);
     }
 }

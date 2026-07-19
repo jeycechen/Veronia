@@ -1,12 +1,8 @@
 /*
  * @Author: 陈开龙 cklnuaa@163.com
  * @Date: 2026-04-21 10:00:50
- * @LastEditors: 陈开龙 cklnuaa@163.com
-<<<<<<< HEAD
- * @LastEditTime: 2026-06-29 01:19:49
-=======
- * @LastEditTime: 2026-07-05 13:21:44
->>>>>>> 0e960364c6df8bed923290d96e79039d3049692b
+ * @LastEditors: ChenCalm cklnuaa@163.com
+ * @LastEditTime: 2026-07-19 19:41:29
  * @FilePath: /Veronia/src/motor/motor.cpp
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -18,7 +14,7 @@ static const char *TAG = "motor_control";
 AngleEncoder encoder(MOTOR_POLE_PAIRS);
 static const int spiClk = 1000000; // 400KHz
 static MotorConfig motor_configs[] = {
-    [MOTOR_UNBOUND_FINE_DETENTS] = {
+    {
         0,
         0,
         1 * PI / 180,
@@ -27,7 +23,7 @@ static MotorConfig motor_configs[] = {
         1.1,
         "Fine values\nWith detents", //任意运动的控制  有阻尼 类似于机械旋钮
     },
-    [MOTOR_UNBOUND_NO_DETENTS] = {
+    {
         0,
         0,
         1 * PI / 180,
@@ -36,7 +32,7 @@ static MotorConfig motor_configs[] = {
         1.1,
         "Unbounded\nNo detents", //无限制  不制动
     },
-    [MOTOR_SUPER_DIAL] = {
+    {
         0,
         0,
         5 * PI / 180,
@@ -45,7 +41,7 @@ static MotorConfig motor_configs[] = {
         1.1,
         "Super Dial", //无限制  不制动
     },
-    [MOTOR_UNBOUND_COARSE_DETENTS] = {
+    {
         0,
         0,
         8.225806452 * _PI / 180,
@@ -54,7 +50,7 @@ static MotorConfig motor_configs[] = {
         1.1,
         "Fine values\nWith detents\nUnbound",
     },
-    [MOTOR_BOUND_0_12_NO_DETENTS]= {
+    {
         13,
         0,
         10 * PI / 180,
@@ -63,7 +59,7 @@ static MotorConfig motor_configs[] = {
         1.1,
         "Bounded 0-13\nNo detents",
     },
-    [MOTOR_COARSE_DETENTS] = {
+    {
         32,
         0,
         8.225806452 * PI / 180,
@@ -72,7 +68,7 @@ static MotorConfig motor_configs[] = {
         1.1,
         "Coarse values\nStrong detents", //粗糙的棘轮 强阻尼
     },
-    [MOTOR_FINE_NO_DETENTS] = {
+    {
         256,
         127,
         1 * PI / 180,
@@ -81,7 +77,7 @@ static MotorConfig motor_configs[] = {
         1.1,
         "Fine values\nNo detents", //任意运动的控制  无阻尼
     },
-    [MOTOR_ON_OFF_STRONG_DETENTS] = {
+    {
         2, 
         0,
         60 * PI / 180, 
@@ -90,7 +86,6 @@ static MotorConfig motor_configs[] = {
         0.55,                    // Note the snap point is slightly past the midpoint (0.5); compare to normal detents which use a snap point *past* the next value (i.e. > 1)
         "On/off\nStrong detent", //模拟开关  强制动
     },
-
 };
 // 限制value的值在合法的范围内
 static inline float CLAMP(const float value, const float low, const float high) {
@@ -120,41 +115,50 @@ static float readMyAngleEncoderCallback() {
 MotorCtrl motorCtrl;
 
 void MotorCtrl::init(){
+    Serial.begin(115200);
+    SimpleFOCDebug::enable();
+
     last_time_us = esp_timer_get_time(); // 初始化时间
     sensor = GenericSensor(readMyAngleEncoderCallback, initMyAngleEncoderCallback);
     sensor.init();
-    motor.linkSensor(&(this->sensor));
-    driver.voltage_power_supply = MOTOR_POWER_SUPPLY;
-    driver.init();
-    motor.linkDriver(&driver);
-    motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
-
-    motor.controller = MotionControlType::torque;
     
+    driver.voltage_power_supply = POWER_SUPPLY_VOLTAGE;
+    driver.voltage_limit = DRIVER_VOLTAGE_LIMIT;
+    driver.dead_zone = 0.04f;
+
+    // if (driver.init() = 1) {
+    //     ESP_LOGE(TAG, "BLDCDriver6PWM init failed, motor output disabled");
+    //     vTaskDelete(nullptr);
+    //     return;
+    // }
+    driver.init();
+    driver.enable();
+    motor.useMonitoring(Serial);
+    motor.voltage_sensor_align = MOTOR_VOLTAGE_LIMIT;
+    motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
+    motor.controller = MotionControlType::torque;
     motor.PID_velocity.P = 1;
     motor.PID_velocity.I = 0;
     motor.PID_velocity.D = 0.01;
-
-    motor.voltage_limit = 5;
+    motor.sensor_offset = 0;
+    motor.voltage_limit = MOTOR_VOLTAGE_LIMIT;
     motor.LPF_velocity.Tf = 0.01;
     motor.velocity_limit = 10;
-<<<<<<< HEAD
-    #if MOTOR_DIRECTION_REV
-        current_detent_center = -motor.shaft_angle;
-    #else 
-        current_detent_center = motor.shaft_angle;
-    #endif
-=======
     current_detent_center = sensor.getAngle(); // 初始化当前的档位中心为当前角度
->>>>>>> 0e960364c6df8bed923290d96e79039d3049692b
+    motor.linkDriver(&(this->driver));
+    motor.linkSensor(&(this->sensor));
+    
     motor.init();
+    motor.sensor_direction = Direction::CW;
+    printf("sensor_direction=%d\n", (int)motor.sensor_direction);
     motor.initFOC();
+    
+    _delay(1000);
 }
 
 void MotorCtrl::motorUpdate(void *pvParameters) {
-    sensor.update();
     motor.loopFOC();
-    
+
     // 计算当前的速度，使用一阶平滑滤波；
     idle_velocity = sensor.getVelocity() * IDLE_VELOCITY_EWMA_ALPHA + idle_velocity * ( 1 - IDLE_VELOCITY_EWMA_ALPHA);
     if (fabsf(idle_velocity) > IDLE_VELOCITY_RAT_PER_SEC) {
@@ -179,42 +183,19 @@ void MotorCtrl::motorUpdate(void *pvParameters) {
 
     // 判断档位位置，是否执行跳档
     if (angle_to_current_detent_center > workConfig.position_width_radians * workConfig.snap_point
-<<<<<<< HEAD
-        && (workConfig.num_positions <= 0 || workConfig.position < workConfig.num_positions  - 1)) { // delta angle越过了设置的角度
-#if MOTOR_DIRECTION_REV
-=======
         && (workConfig.num_positions <= 0 || workConfig.position < workConfig.num_positions - 1)) { // delta angle越过了设置的角度
->>>>>>> 0e960364c6df8bed923290d96e79039d3049692b
         current_detent_center += workConfig.position_width_radians;
         angle_to_current_detent_center -= workConfig.position_width_radians;
 
         workConfig.position++;
-<<<<<<< HEAD
-#else
-        current_detent_center -= workConfig.position_width_radians;
-        angle_to_current_detent_center += workConfig.position_width_radians;
-
-        workConfig.position--;
-#endif
-    } else if (angle_to_current_detent_center < -workConfig.position_width_radians * workConfig.snap_point 
-                && (workConfig.num_positions <=0 || workConfig.position < workConfig.num_positions - 1)) 
-=======
     } else if (angle_to_current_detent_center < - workConfig.position_width_radians * workConfig.snap_point 
                 && (workConfig.num_positions <=0 || workConfig.position > 0)) 
->>>>>>> 0e960364c6df8bed923290d96e79039d3049692b
     {
-#if MOTOR_DIRECTION_REV
         // 进入这个分支，说明是往反方向旋转
         current_detent_center -= workConfig.position_width_radians;
         angle_to_current_detent_center += workConfig.position_width_radians;
 
         workConfig.position--;
-#else 
-        current_detent_center += workConfig.position_width_radians;
-        angle_to_current_detent_center -= workConfig.position_width_radians;
-
-        workConfig.position++;
-#endif;
     }
     
     // 死区调整, 死区：在档位中心允许一定的误差，防止高频修正
@@ -229,7 +210,7 @@ void MotorCtrl::motorUpdate(void *pvParameters) {
               || (angle_to_current_detent_center > 0 && workConfig.position == workConfig.num_positions - 1));
     
     motor.PID_velocity.limit = is_out_bound ? 10 : 3;
-    motor.PID_velocity.P = is_out_bound ? workConfig.endstop_strength_unit * 4 : workConfig.detent_strength_unit * 4;
+    motor.PID_velocity.P = is_out_bound ? workConfig.endstop_strength_unit * 10 : workConfig.detent_strength_unit * 10;
     
     // 处理float类型的绝对值
     if (fabsf(sensor.getVelocity()) > 60)
@@ -238,6 +219,8 @@ void MotorCtrl::motorUpdate(void *pvParameters) {
     } else {
         float torque = motor.PID_velocity(-angle_to_current_detent_center + dead_zone_adjustment);
         motor.move(torque);
+        printf("angle_S:%f angle:%f torque:%f cur_den:%f delta:%f\n", sensor.getAngle(), motor.shaft_angle, torque, current_detent_center, angle_to_current_detent_center);
+        printf("config position:%ld\n", workConfig.position);
     }
 }
 
@@ -269,20 +252,17 @@ void MotorCtrl::publish_motor_status(bool is_outbound){
 void MotorCtrl::update_motor_runmode(int mode, int init_position){
     workConfig = motor_configs[mode];
     workConfig.position = init_position;
-<<<<<<< HEAD
-    current_detent_center = motor.shaft_angle;
-=======
     current_detent_center = sensor.getAngle();
->>>>>>> 0e960364c6df8bed923290d96e79039d3049692b
 
     shake_motor(2, 2);
 }
 
 extern "C" void veronia_motor_task(void *pvParameters) {
     motorCtrl.init();
+    motorCtrl.update_motor_runmode(MOTOR_ON_OFF_STRONG_DETENTS, 0);
+
     while (1) {
         motorCtrl.motorUpdate(pvParameters);
         vTaskDelay(1);
-        printf(">>> Motor control task running on core %d <<<\n", xPortGetCoreID());
     }
 }

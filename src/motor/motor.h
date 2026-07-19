@@ -1,8 +1,8 @@
 /*
  * @Author: ChenCalm cklnuaa@163.com
  * @Date: 2026-05-23 18:20:32
- * @LastEditors: 陈开龙 cklnuaa@163.com
- * @LastEditTime: 2026-06-29 01:15:30
+ * @LastEditors: ChenCalm cklnuaa@163.com
+ * @LastEditTime: 2026-07-17 21:26:49
  * @FilePath: \Veronia\src\motor\motor.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -24,7 +24,9 @@
 static constexpr uint8_t MOTOR_POLE_PAIRS = 7;
 static constexpr int AS5047P_SPI_MODE = 1;
 static constexpr int AS5047P_SPI_CLOCK_HZ = 100 * 1000;
-static constexpr int MOTOR_POWER_SUPPLY = 5; // 5V供电
+static constexpr float POWER_SUPPLY_VOLTAGE = 5.2f;
+static constexpr float DRIVER_VOLTAGE_LIMIT = 5.2f;
+static constexpr float MOTOR_VOLTAGE_LIMIT = 1.0f;
 
 // 怠速
 static constexpr float IDLE_VELOCITY_EWMA_ALPHA = 0.001;
@@ -63,8 +65,6 @@ typedef enum
     MOTOR_SUPER_DIAL, 
     MOTOR_UNBOUND_COARSE_DETENTS, // Coarse values\nStrong detents\n unbound
     MOTOR_BOUND_0_12_NO_DETENTS,
-    MOTOR_BOUND_LCD_BK_BRIGHTNESS,
-    MOTOR_BOUND_LCD_BK_TIMEOUT,
     MOTOR_COARSE_DETENTS,       // Coarse values\nStrong detents
     MOTOR_FINE_NO_DETENTS,     // Fine values\nNo detents
     MOTOR_ON_OFF_STRONG_DETENTS,             // "On/off\nStrong detent"
@@ -76,12 +76,12 @@ class MotorCtrl {
         MOTOR_WORK_MODE_ENUM workMode;
         GenericSensor sensor;
         BLDCMotor motor = BLDCMotor(MOTOR_POLE_PAIRS);;
-        BLDCDriver6PWM driver = BLDCDriver6PWM(TMC_UH, TMC_UL, TMC_VH, TMC_VL, TMC_WH, TMC_WL);
+        BLDCDriver6PWM driver = BLDCDriver6PWM(TMC_UH, TMC_UL, TMC_VH, TMC_VL, TMC_WH, TMC_WL, EN_MOTOR);
         
         MotorConfig workConfig = {
             .num_positions = 0,
             .position = 0,
-            .position_width_radians = 8 * PI / 180;
+            .position_width_radians = 8 * PI / 180,
             .detent_strength_unit = 2,
             .endstop_strength_unit = 1,
             .snap_point = 1.1,
