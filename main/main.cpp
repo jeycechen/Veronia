@@ -30,8 +30,8 @@ extern "C" void app_main(void) {
     // 创建任务并固定到核心 0
     // xTaskCreatePinnedToCore(task_on_core, "Task0", 4096, (void *)0, 10, NULL, 0);
 
-    // 创建任务并固定到核心 1
-    // xTaskCreatePinnedToCore(veronia_ui_task, "veronia ui task", 4096, (void *)1, 10, NULL, 1);
+    // UI 与电机控制分别运行在不同核心；UI 初始化时会绘制显示屏测试图案。
+    xTaskCreatePinnedToCore(veronia_ui_task, "veronia ui task", 4096, nullptr, 10, NULL, 0);
 
     xTaskCreatePinnedToCore(veronia_motor_task, "verinia motor task", 4096 * 2, (void *)1, 10, NULL, 1);
   

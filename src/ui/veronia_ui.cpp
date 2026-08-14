@@ -13,11 +13,16 @@ extern "C" { // 这里是为了编译cpp的时候引用c风格的符号能够找
 #include "freertos/task.h"
 #include "esp_log.h"
 }
+#include "display.h"
 
 class VeroniaUI {
     public:
         VeroniaUI() {};
-        void init() {};
+        void init() {
+            if (veronia_display_init() == ESP_OK) {
+                veronia_display_show_test_pattern();
+            }
+        };
 };
 
 void veronia_ui_task(void *pvParameters) {
