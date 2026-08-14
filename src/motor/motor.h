@@ -6,8 +6,8 @@
  * @FilePath: \Veronia\src\motor\motor.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
-#ifndef MOTOR_H
-#define MOTOR_H
+#ifndef VERONIA_MOTOR_CONTROL_H
+#define VERONIA_MOTOR_CONTROL_H
 
 #include "stdint.h"
 #include "freertos/FreeRTOS.h"
@@ -75,7 +75,7 @@ class MotorCtrl {
     private:
         MOTOR_WORK_MODE_ENUM workMode;
         GenericSensor sensor;
-        BLDCMotor motor = BLDCMotor(MOTOR_POLE_PAIRS);;
+        BLDCMotor motor = BLDCMotor(MOTOR_POLE_PAIRS);
         BLDCDriver6PWM driver = BLDCDriver6PWM(TMC_UH, TMC_UL, TMC_VH, TMC_VL, TMC_WH, TMC_WL, EN_MOTOR);
         
         MotorConfig workConfig = {
@@ -107,4 +107,4 @@ class MotorCtrl {
 };
 
 
-#endif
+#endif // VERONIA_MOTOR_CONTROL_H

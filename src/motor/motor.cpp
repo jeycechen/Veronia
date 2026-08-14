@@ -173,7 +173,7 @@ void MotorCtrl::motorUpdate(void *pvParameters) {
 
     // 如果上一次进入循环也是怠速，并且已经持续超过了怠速的时间阈值，并且当前角度距离虚拟档位中心不远，那么就认为这个时候是静止不动的，可以进行怠速校正；
     if (last_idle_start > 0 && millis() - last_idle_start > IDLE_CORRECTION_MILLIS_THRESHOLD
-        && fabsf(sensor.getAngle() - current_detent_center < IDLE_CORRECTION_MAX_ANGLE_RAD))
+        && fabsf(sensor.getAngle() - current_detent_center) < IDLE_CORRECTION_MAX_ANGLE_RAD)
     {
         current_detent_center = sensor.getAngle() * IDLE_CORRECTION_RATE_ALPHA + current_detent_center * (1 - IDLE_CORRECTION_RATE_ALPHA);
     }
